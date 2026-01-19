@@ -264,28 +264,33 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   /// Accept invitation
   Future<void> acceptInvitation(String invitationId, String tenantId) async {
-    // #region agent log
-    print('[DEBUG] auth_provider.acceptInvitation - invitationId: $invitationId, tenantId: $tenantId');
-    // #endregion
     state = state.copyWith(isLoading: true, error: null);
 
     try {
-      await _apiClient.acceptInvitation(invitationId);
+      // Accept invitation - this saves new tokens and returns tenant info
+      final response = await _apiClient.acceptInvitation(invitationId);
+      
+      // Extract tenant from response
+      final tenantData = response['tenant'] as Map<String, dynamic>?;
+      Tenant? newTenant;
+      if (tenantData != null) {
+        newTenant = Tenant.fromJson(tenantData);
+      }
 
-      // Refresh profile and tenants
+      // Refresh profile and tenants with fresh tokens
       final driver = await _apiClient.getProfile();
       final tenants = await _apiClient.getTenants();
       final invitations = await _apiClient.getInvitations();
 
-      // Set the newly joined tenant as active
-      final newTenant = tenants.firstWhere((t) => t.id == tenantId);
-      await _localStorage.setLastActiveTenantId(tenantId);
+      // Use returned tenant or find from tenants list
+      final activeTenant = newTenant ?? tenants.firstWhere((t) => t.id == tenantId);
+      await _localStorage.setLastActiveTenantId(activeTenant.id);
 
       state = state.copyWith(
         status: AuthStatus.authenticated,
         driver: driver,
         tenants: tenants,
-        activeTenant: newTenant,
+        activeTenant: activeTenant,
         invitations: invitations,
         isLoading: false,
       );

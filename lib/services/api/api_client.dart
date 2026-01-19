@@ -192,9 +192,6 @@ class ApiClient {
     try {
       final response = await _dio.get('/driver/invitations');
       final data = response.data['data'] as List<dynamic>;
-      // #region agent log
-      print('[DEBUG] getInvitations raw response: $data');
-      // #endregion
       return data
           .map((i) => Invitation.fromJson(i as Map<String, dynamic>))
           .toList();
@@ -203,21 +200,23 @@ class ApiClient {
     }
   }
 
-  /// Accept invitation
-  Future<void> acceptInvitation(String invitationId) async {
-    // #region agent log
-    final url = '/driver/invitations/$invitationId/accept';
-    print('[DEBUG] acceptInvitation called - invitationId: $invitationId, url: $url');
-    // #endregion
+  /// Accept invitation - returns response with new tokens and tenant info
+  Future<Map<String, dynamic>> acceptInvitation(String invitationId) async {
     try {
-      await _dio.post(url);
-      // #region agent log
-      print('[DEBUG] acceptInvitation SUCCESS - invitationId: $invitationId');
-      // #endregion
+      final response = await _dio.post('/driver/invitations/$invitationId/accept');
+      
+      // Save new tokens returned by the backend
+      final accessToken = response.data['access_token'] as String?;
+      final refreshToken = response.data['refresh_token'] as String?;
+      if (accessToken != null && refreshToken != null) {
+        await _tokenStorage.saveTokens(AuthTokens(
+          accessToken: accessToken,
+          refreshToken: refreshToken,
+        ));
+      }
+      
+      return response.data as Map<String, dynamic>;
     } on DioException catch (e) {
-      // #region agent log
-      print('[DEBUG] acceptInvitation FAILED - invitationId: $invitationId, statusCode: ${e.response?.statusCode}, responseData: ${e.response?.data}, errorMessage: ${e.message}');
-      // #endregion
       throw _handleDioError(e);
     }
   }
@@ -451,29 +450,15 @@ class _AuthInterceptor extends Interceptor {
     if (!publicEndpoints.any((e) => options.path.contains(e))) {
       final token = await _tokenStorage.getAccessToken();
       if (token != null) {
-        // #region agent log
-        print('[DEBUG] _AuthInterceptor - Raw token (first 30 chars): ${token.length > 30 ? token.substring(0, 30) + "..." : token}');
-        print('[DEBUG] _AuthInterceptor - Token starts with "Bearer": ${token.startsWith("Bearer ")}');
-        // #endregion
         final authHeader = token.startsWith('Bearer ') ? token : 'Bearer $token';
         options.headers['Authorization'] = authHeader;
-        // #region agent log
-        print('[DEBUG] _AuthInterceptor - Final Authorization header (first 30 chars): ${authHeader.substring(0, authHeader.length > 30 ? 30 : authHeader.length)}...');
-        // #endregion
-      } else {
-        // #region agent log
-        print('[DEBUG] _AuthInterceptor - WARNING: No token available for ${options.path}');
-        // #endregion
       }
     }
 
-    // Remove Content-Type and Accept for invitation accept/reject endpoints (no body needed, match Postman)
+    // Remove Content-Type and Accept for invitation accept/reject endpoints (no body needed)
     if (options.path.contains('/invitations/') && (options.path.contains('/accept') || options.path.contains('/reject'))) {
       options.headers.remove('Content-Type');
       options.headers.remove('Accept');
-      // #region agent log
-      print('[DEBUG] _AuthInterceptor - Removed Content-Type and Accept headers for ${options.path}');
-      // #endregion
     }
 
     handler.next(options);
@@ -514,14 +499,6 @@ class _LoggingInterceptor extends Interceptor {
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
     print('🌐 ${options.method} ${options.path}');
-    // #region agent log
-    if (options.path.contains('/invitations') && options.path.contains('/accept')) {
-      print('[DEBUG] Request headers: ${options.headers}');
-      print('[DEBUG] Request data: ${options.data}');
-      print('[DEBUG] Content-Type: ${options.headers['Content-Type']}');
-      print('[DEBUG] Authorization header present: ${options.headers.containsKey('Authorization')}');
-    }
-    // #endregion
     handler.next(options);
   }
 

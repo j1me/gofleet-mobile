@@ -7,7 +7,9 @@ import '../../../config/theme/app_typography.dart';
 import '../../../data/models/models.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/driver_provider.dart';
+import '../../providers/location_provider.dart';
 import '../../widgets/common/app_button.dart';
+import '../../widgets/maps/delivery_map_widget.dart';
 import '../../../router/app_router.dart';
 import '../../../services/navigation/navigation_service.dart';
 
@@ -22,14 +24,30 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    // Load driver profile and assignment on mount
+    // Load driver profile, assignment, and initialize location on mount
     Future.microtask(() {
       final driver = ref.read(authProvider).driver;
       ref.read(driverProvider.notifier).setDriver(driver);
       if (driver?.isOnShift == true) {
         ref.read(driverProvider.notifier).loadActiveAssignment();
       }
+      // Initialize location tracking
+      _initializeLocation();
     });
+  }
+
+  Future<void> _initializeLocation() async {
+    final locationNotifier = ref.read(locationProvider.notifier);
+    await locationNotifier.initialize();
+    
+    // Request permission if not granted
+    final hasPermission = ref.read(locationProvider).hasPermission;
+    if (!hasPermission) {
+      await locationNotifier.requestPermission();
+    }
+    
+    // Get current position
+    await locationNotifier.getCurrentPosition();
   }
 
   Future<void> _toggleShift() async {
@@ -101,6 +119,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
     final driverState = ref.watch(driverProvider);
+    final locationState = ref.watch(locationProvider);
     final driver = authState.driver;
     final activeTenant = authState.activeTenant;
     
@@ -140,8 +159,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 
                 const SizedBox(height: 24),
                 
-                // Map placeholder
-                _buildMapPlaceholder(),
+                // Delivery Map
+                DeliveryMapWidget(
+                  currentPosition: locationState.lastPosition,
+                  assignment: driverState.activeAssignment,
+                  isLoading: driverState.isLoading,
+                ),
                 
                 const SizedBox(height: 24),
                 
@@ -188,61 +211,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildMapPlaceholder() {
-    return Container(
-      height: 200,
-      decoration: BoxDecoration(
-        color: AppColors.darkGray,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.lightGray),
-      ),
-      child: Stack(
-        children: [
-          // Dark map style placeholder
-          Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  AppColors.darkGray,
-                  AppColors.mediumGray,
-                ],
-              ),
-            ),
-          ),
-          // Grid lines to simulate map
-          CustomPaint(
-            size: const Size(double.infinity, 200),
-            painter: _MapGridPainter(),
-          ),
-          // Current location indicator
-          const Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.my_location,
-                  color: AppColors.primaryGreen,
-                  size: 32,
-                ),
-                SizedBox(height: 8),
-                Text(
-                  'Your location',
-                  style: TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -713,27 +681,4 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       onTap: onTap,
     );
   }
-}
-
-/// Custom painter for map grid effect
-class _MapGridPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = AppColors.lightGray.withOpacity(0.2)
-      ..strokeWidth = 1;
-
-    // Horizontal lines
-    for (double y = 0; y < size.height; y += 30) {
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
-    }
-
-    // Vertical lines
-    for (double x = 0; x < size.width; x += 30) {
-      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

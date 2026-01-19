@@ -64,7 +64,7 @@ class AssignmentScreen extends ConsumerWidget {
               
               // Stops list
               ...assignment.sortedStops.map(
-                (stop) => _buildStopCard(context, stop, assignment),
+                (stop) => _buildStopCard(context, ref, stop, assignment),
               ),
             ],
           ),
@@ -166,7 +166,7 @@ class AssignmentScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildStopCard(BuildContext context, Stop stop, Assignment assignment) {
+  Widget _buildStopCard(BuildContext context, WidgetRef ref, Stop stop, Assignment assignment) {
     final isNext = assignment.nextStop?.id == stop.id;
     final timeFormat = DateFormat('h:mm a');
 
@@ -318,10 +318,14 @@ class AssignmentScreen extends ConsumerWidget {
                             text: 'Navigate',
                             icon: Icons.navigation,
                             height: 44,
-                            onPressed: () => NavigationService.navigateToLocation(
-                              lat: stop.order.dropLat,
-                              lng: stop.order.dropLng,
-                            ),
+                            onPressed: () async {
+                              // Auto-start assignment if not started
+                              await ref.read(driverProvider.notifier).ensureAssignmentStarted();
+                              NavigationService.navigateToLocation(
+                                lat: stop.order.dropLat,
+                                lng: stop.order.dropLng,
+                              );
+                            },
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -330,9 +334,13 @@ class AssignmentScreen extends ConsumerWidget {
                             text: 'Deliver',
                             icon: Icons.check,
                             height: 44,
-                            onPressed: () => context.push(
-                              '/deliver/${stop.order.id}',
-                            ),
+                            onPressed: () async {
+                              // Auto-start assignment if not started
+                              await ref.read(driverProvider.notifier).ensureAssignmentStarted();
+                              if (context.mounted) {
+                                context.push('/deliver/${stop.order.id}');
+                              }
+                            },
                           ),
                         ),
                       ],

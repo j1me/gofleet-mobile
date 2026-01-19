@@ -394,25 +394,51 @@ Authorization: Bearer <access_token>
 
 #### Accept Invitation
 
-Accept an invitation to join a tenant. Use the `id` field from the invitations list response.
+Accept an invitation to join a tenant. Use the `id` field from the invitations list response. Returns new tokens with the tenant embedded so the driver can immediately use tenant-scoped endpoints.
 
 ```http
 POST /driver/invitations/:invitationId/accept
 Authorization: Bearer <access_token>
+Content-Type: application/json
 ```
 
 **Path Parameters:**
 - `invitationId`: The invitation ID (`id` field from `GET /driver/invitations`)
 
+**Request Body:**
+```json
+{
+  "refresh_token": "current_refresh_token..."
+}
+```
+
 **Response (200):**
 ```json
 {
   "success": true,
-  "message": "You have joined the organization"
+  "message": "You have joined the organization",
+  "access_token": "new_access_token_with_tenant...",
+  "refresh_token": "new_refresh_token...",
+  "tenant": {
+    "id": "uuid",
+    "name": "Acme Delivery Co",
+    "status": "active"
+  }
 }
 ```
 
+**Important:** After accepting, store the new tokens immediately:
+```dart
+final response = await api.acceptInvitation(invitationId, refreshToken);
+await tokenStorage.saveTokens(
+  accessToken: response.accessToken,
+  refreshToken: response.refreshToken,
+);
+// Now driver can use tenant-scoped endpoints (shift, assignments, etc.)
+```
+
 **Error Responses:**
+- `401 UNAUTHORIZED`: Invalid refresh token
 - `404 NOT_FOUND`: Invitation not found or does not belong to driver
 - `409 CONFLICT`: No pending invitation found (already accepted/rejected)
 
@@ -625,6 +651,33 @@ Authorization: Bearer <access_token>
 - `404 NOT_FOUND`: No active assignment
 
 **Note**: Stops are ordered by `sequence`. Only one assignment can be active at a time.
+
+---
+
+#### Start Assignment
+
+Start the driver's active assignment (transitions from `created` to `started` status). This begins the delivery process and updates all orders in the assignment to `out_for_delivery` status.
+
+```http
+POST /driver/assignments/active/start
+Authorization: Bearer <access_token>
+```
+
+**Response (200):**
+```json
+{
+  "id": "aa0e8400-e29b-41d4-a716-446655440000",
+  "status": "started",
+  "assigned_at": "2024-01-15T08:30:00.000Z",
+  "started_at": "2024-01-15T09:00:00.000Z"
+}
+```
+
+**Error Responses:**
+- `404 NOT_FOUND`: No active assignment found
+- `400 BAD_REQUEST`: Assignment already started or invalid status transition
+
+**Note**: Starting an assignment updates all orders in the assignment to `out_for_delivery` status. The assignment must be in `created` status to be started.
 
 ---
 

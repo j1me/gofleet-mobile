@@ -113,7 +113,7 @@ class OrderDetailScreen extends ConsumerWidget {
         ),
       ),
       bottomNavigationBar: stop.isPending
-          ? _buildBottomActions(context, order)
+          ? _buildBottomActions(context, ref, order)
           : null,
     );
   }
@@ -366,7 +366,7 @@ class OrderDetailScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildBottomActions(BuildContext context, Order order) {
+  Widget _buildBottomActions(BuildContext context, WidgetRef ref, Order order) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: const BoxDecoration(
@@ -382,16 +382,26 @@ class OrderDetailScreen extends ConsumerWidget {
             AppButton(
               text: 'NAVIGATE',
               icon: Icons.navigation,
-              onPressed: () => NavigationService.navigateToLocation(
-                lat: order.dropLat,
-                lng: order.dropLng,
-              ),
+              onPressed: () async {
+                // Auto-start assignment if not started
+                await ref.read(driverProvider.notifier).ensureAssignmentStarted();
+                NavigationService.navigateToLocation(
+                  lat: order.dropLat,
+                  lng: order.dropLng,
+                );
+              },
             ),
             const SizedBox(height: 12),
             AppOutlinedButton(
               text: 'MARK AS DELIVERED',
               icon: Icons.check_circle_outline,
-              onPressed: () => context.push('/deliver/${order.id}'),
+              onPressed: () async {
+                // Auto-start assignment if not started
+                await ref.read(driverProvider.notifier).ensureAssignmentStarted();
+                if (context.mounted) {
+                  context.push('/deliver/${order.id}');
+                }
+              },
             ),
           ],
         ),

@@ -122,6 +122,27 @@ class DriverNotifier extends StateNotifier<DriverState> {
     }
   }
 
+  /// Start the active assignment (transitions from created to started)
+  Future<void> startAssignment() async {
+    state = state.copyWith(isLoading: true, error: null);
+
+    try {
+      final assignment = await _apiClient.startAssignment();
+      state = state.copyWith(activeAssignment: assignment, isLoading: false);
+    } on ApiException catch (e) {
+      state = state.copyWith(isLoading: false, error: e.message);
+      rethrow;
+    }
+  }
+
+  /// Ensure assignment is started before performing actions
+  Future<void> ensureAssignmentStarted() async {
+    final assignment = state.activeAssignment;
+    if (assignment != null && !assignment.isStarted) {
+      await startAssignment();
+    }
+  }
+
   /// Update order status
   Future<void> updateOrderStatus({
     required String orderId,

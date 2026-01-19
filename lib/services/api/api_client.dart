@@ -295,6 +295,16 @@ class ApiClient {
     }
   }
 
+  /// Start active assignment (transitions from created to started)
+  Future<Assignment> startAssignment() async {
+    try {
+      final response = await _dio.post('/driver/assignments/active/start');
+      return Assignment.fromJson(response.data);
+    } on DioException catch (e) {
+      throw _handleDioError(e);
+    }
+  }
+
   // ============== Order Endpoints ==============
 
   /// Get order details
@@ -458,7 +468,8 @@ class _AuthInterceptor extends Interceptor {
     // Remove Content-Type and Accept for endpoints that don't need a body
     if ((options.path.contains('/invitations/') && (options.path.contains('/accept') || options.path.contains('/reject'))) ||
         options.path.contains('/driver/shift/start') ||
-        options.path.contains('/driver/shift/end')) {
+        options.path.contains('/driver/shift/end') ||
+        options.path.contains('/driver/assignments/active/start')) {
       options.headers.remove('Content-Type');
       options.headers.remove('Accept');
     }

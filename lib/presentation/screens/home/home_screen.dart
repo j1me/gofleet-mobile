@@ -472,10 +472,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   child: AppButton(
                     text: 'NAVIGATE',
                     icon: Icons.navigation,
-                    onPressed: () => NavigationService.navigateToLocation(
-                      lat: nextStop.order.dropLat,
-                      lng: nextStop.order.dropLng,
-                    ),
+                    onPressed: () async {
+                      // Auto-start assignment if not started
+                      await ref.read(driverProvider.notifier).ensureAssignmentStarted();
+                      NavigationService.navigateToLocation(
+                        lat: nextStop.order.dropLat,
+                        lng: nextStop.order.dropLng,
+                      );
+                    },
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -483,9 +487,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   child: AppOutlinedButton(
                     text: 'DELIVER',
                     icon: Icons.check_circle_outline,
-                    onPressed: () => context.push(
-                      '/deliver/${nextStop.order.id}',
-                    ),
+                    onPressed: () async {
+                      // Auto-start assignment if not started
+                      await ref.read(driverProvider.notifier).ensureAssignmentStarted();
+                      if (context.mounted) {
+                        context.push('/deliver/${nextStop.order.id}');
+                      }
+                    },
                   ),
                 ),
               ],

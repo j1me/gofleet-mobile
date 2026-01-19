@@ -32,7 +32,7 @@ class LocationService {
   final ApiClient _apiClient;
   
   StreamSubscription<Position>? _positionSubscription;
-  StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
+  StreamSubscription<ConnectivityResult>? _connectivitySubscription;
   Timer? _uploadTimer;
   
   Position? _lastPosition;
@@ -234,10 +234,9 @@ class LocationService {
   }
 
   /// Handle connectivity changes
-  void _onConnectivityChange(List<ConnectivityResult> results) {
+  void _onConnectivityChange(ConnectivityResult result) {
     final wasOnline = _isOnline;
-    _isOnline = results.isNotEmpty && 
-                !results.contains(ConnectivityResult.none);
+    _isOnline = result != ConnectivityResult.none;
 
     if (!wasOnline && _isOnline) {
       // Came back online, upload queued locations

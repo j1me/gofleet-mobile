@@ -84,10 +84,12 @@ class Order extends Equatable {
       id: json['id'] as String,
       customerName: json['customer_name'] as String,
       dropAddress: json['drop_address'] as String,
-      dropLat: (json['drop_lat'] as num).toDouble(),
-      dropLng: (json['drop_lng'] as num).toDouble(),
+      dropLat: (json['drop_lat'] as num?)?.toDouble() ?? 0.0,
+      dropLng: (json['drop_lng'] as num?)?.toDouble() ?? 0.0,
       notes: json['notes'] as String?,
-      status: OrderStatus.fromString(json['status'] as String),
+      status: json['status'] != null
+          ? OrderStatus.fromString(json['status'] as String)
+          : OrderStatus.assigned,
     );
   }
 

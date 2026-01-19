@@ -455,8 +455,10 @@ class _AuthInterceptor extends Interceptor {
       }
     }
 
-    // Remove Content-Type and Accept for invitation accept/reject endpoints (no body needed)
-    if (options.path.contains('/invitations/') && (options.path.contains('/accept') || options.path.contains('/reject'))) {
+    // Remove Content-Type and Accept for endpoints that don't need a body
+    if ((options.path.contains('/invitations/') && (options.path.contains('/accept') || options.path.contains('/reject'))) ||
+        options.path.contains('/driver/shift/start') ||
+        options.path.contains('/driver/shift/end')) {
       options.headers.remove('Content-Type');
       options.headers.remove('Accept');
     }

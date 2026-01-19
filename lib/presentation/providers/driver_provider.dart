@@ -115,6 +115,10 @@ class DriverNotifier extends StateNotifier<DriverState> {
       if (e.code != ApiException.notFound) {
         state = state.copyWith(error: e.message);
       }
+    } catch (e) {
+      // Catch parsing errors and other exceptions
+      print('Error loading assignment: $e');
+      state = state.copyWith(error: 'Failed to load assignment');
     }
   }
 

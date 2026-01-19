@@ -524,6 +524,7 @@ class _LoggingInterceptor extends Interceptor {
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) {
     print('❌ ${err.response?.statusCode} ${err.requestOptions.path}');
+    print('   Error: ${err.response?.data}');
     handler.next(err);
   }
 }

@@ -264,6 +264,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   /// Accept invitation
   Future<void> acceptInvitation(String invitationId, String tenantId) async {
+    // #region agent log
+    print('[DEBUG] auth_provider.acceptInvitation - invitationId: $invitationId, tenantId: $tenantId');
+    // #endregion
     state = state.copyWith(isLoading: true, error: null);
 
     try {

@@ -23,6 +23,9 @@ class _InvitationsScreenState extends ConsumerState<InvitationsScreen> {
   String? _processingTenantId;
 
   Future<void> _acceptInvitation(Invitation invitation) async {
+    // #region agent log
+    print('[DEBUG] Accept clicked - id: ${invitation.id}, tenantId: ${invitation.tenantId}, tenantName: ${invitation.tenantName}');
+    // #endregion
     setState(() {
       _isAccepting = true;
       _processingTenantId = invitation.tenantId;
